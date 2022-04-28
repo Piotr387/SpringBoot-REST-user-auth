@@ -22,6 +22,10 @@ public class Utils {
         return generateRandomString(length);
     }
 
+    public String generateAddressId(int length){
+        return generateRandomString(length);
+    }
+
     /**
      * function simply generates a string of random characters of a given length
      * which is using declared alphabet as a source of characters, it will randomly pick up
@@ -37,5 +41,8 @@ public class Utils {
         }
         return new String(returnValue);
     }
+
+
+
 
 }
