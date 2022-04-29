@@ -1,6 +1,5 @@
 package com.pp.app.ui.model.response;
 
-import com.pp.app.ui.shared.DTO.AddressDTO;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,6 +13,6 @@ public class UserRest {
     private String firstName;
     private String lastName;
     private String email;
-    private List<AddressDTO> addresses;
+    private List<AddressRest> addresses;
 
 }
