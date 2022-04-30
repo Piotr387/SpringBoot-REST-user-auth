@@ -27,16 +27,21 @@ public class WebSecurity extends WebSecurityConfigurerAdapter {
 
     /**
      * Functions that defines which point will be public and which one will be protected
+     *
      * @param http
      * @throws Exception
      */
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.csrf().disable().authorizeRequests().
-                antMatchers(HttpMethod.POST, SecurityConstants.SIGN_UP_URL)
+        http.csrf().disable().authorizeRequests()
+                .antMatchers(HttpMethod.POST, SecurityConstants.SIGN_UP_URL)
+                .permitAll()
+                .antMatchers(HttpMethod.GET, SecurityConstants.EMAIL_VERIFICATION_URL)
+                .permitAll()
+                .antMatchers(HttpMethod.GET, SecurityConstants.EMAIL_VERIFICATION_PAGE)
                 .permitAll()
                 .anyRequest().authenticated().and()
-                .addFilter(getAuthenticationFilter() )
+                .addFilter(getAuthenticationFilter())
                 .addFilter(new AuthorizationFilter(authenticationManager()))
                 .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
@@ -44,6 +49,7 @@ public class WebSecurity extends WebSecurityConfigurerAdapter {
 
     /**
      * Setting up authentication manager, builder,
+     *
      * @param auth
      * @throws Exception
      */

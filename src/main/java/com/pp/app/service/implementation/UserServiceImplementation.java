@@ -3,6 +3,7 @@ package com.pp.app.service.implementation;
 import com.pp.app.io.entity.AddressEntity;
 import com.pp.app.io.entity.UserEntity;
 import com.pp.app.io.repositories.UserRepository;
+import com.pp.app.service.EmailService;
 import com.pp.app.service.UserService;
 import com.pp.app.ui.model.response.ErrorMessages;
 import com.pp.app.ui.shared.DTO.AddressDTO;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -37,6 +39,9 @@ public class  UserServiceImplementation implements UserService {
     @Autowired
     BCryptPasswordEncoder bCryptPasswordEncoder;
 
+    @Autowired
+    EmailService emailService;
+
     @Override
     public UserDto createUser(UserDto userDto) {
 
@@ -51,6 +56,8 @@ public class  UserServiceImplementation implements UserService {
         String publicUserId = utils.generateUserId(30);
         userEntity.setUserId(publicUserId);
         userEntity.setEncryptedPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
+        userEntity.setEmailVerificationToken(utils.generateEmailVerificationToken(publicUserId));
+        userDto.setEmailVerificationToken(userEntity.getEmailVerificationToken());
 
         for (int i = 0; i < userEntity.getAddresses().size(); i++) {
             AddressEntity addressEntity = modelMapper.map(userDto.getAddresses().get(i), AddressEntity.class);
@@ -61,6 +68,7 @@ public class  UserServiceImplementation implements UserService {
 
         UserEntity storedUserDetails = userRepository.save(userEntity);
 
+
         //BeanUtils.copyProperties(storedUserDetails, returnValue);
         modelMapper.addMappings(new PropertyMap<AddressDTO, AddressDTO>() {
             @Override
@@ -69,6 +77,7 @@ public class  UserServiceImplementation implements UserService {
             }
         });
         UserDto returnValue = modelMapper.map(storedUserDetails, UserDto.class);
+        emailService.sendEmail(userDto);
 
         return returnValue;
     }
@@ -140,10 +149,35 @@ public class  UserServiceImplementation implements UserService {
     }
 
     @Override
+    public boolean verifyEmailToken(String token) {
+        boolean returnValue = false;
+
+        UserEntity userEntity = userRepository.findUserByEmailVerificationToken(token);
+
+        if (userEntity != null){
+            boolean hasTokenExpired = Utils.hasTokenExpired(token);
+            if (!hasTokenExpired){
+                userEntity.setEmailVerificationStatus(Boolean.TRUE);
+                userEntity.setEmailVerificationToken(null);
+                userRepository.save(userEntity);
+                returnValue = true;
+            }
+        }
+
+        return returnValue;
+    }
+
+    @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         UserEntity userEntity = userRepository.findByEmail(email).orElseThrow(() ->{
             throw new UsernameNotFoundException(email);
         });
-        return new User(userEntity.getEmail(), userEntity.getEncryptedPassword(), new ArrayList<>());
+
+        return new User(userEntity.getEmail(), userEntity.getEncryptedPassword(),
+                userEntity.getEmailVerificationStatus(),
+                true, true, true,
+                new ArrayList<>());
+
+        //return new User(userEntity.getEmail(), userEntity.getEncryptedPassword(), new ArrayList<>());
     }
 }

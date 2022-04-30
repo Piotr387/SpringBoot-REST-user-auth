@@ -1,8 +1,14 @@
 package com.pp.app.ui.shared;
 
+import com.pp.app.security.SecurityConstants;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.SignatureException;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
+import java.util.Date;
 import java.util.Random;
 
 @Component
@@ -10,6 +16,9 @@ public class Utils {
 
     private final Random random = new SecureRandom();
     private final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUWXYZabcdefghijklmnopqrstuvwxyz";
+
+
+
 
     /**
      * This function accept a arument which is goint to be an integer value of
@@ -42,7 +51,29 @@ public class Utils {
         return new String(returnValue);
     }
 
+    public static boolean hasTokenExpired(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(SecurityConstants.getTokenSecret())
+                    .parseClaimsJws( token )
+                    .getBody();
+            Date tokenExpirationDate = claims.getExpiration();
+            Date todayDate = new Date();
 
+            return tokenExpirationDate.before(todayDate);
+        } catch (SignatureException e){
+            System.out.println(e);
+        }
 
+        return false;
+    }
 
+    public String generateEmailVerificationToken(String publicUserId) {
+        String token = Jwts.builder()
+                .setSubject(publicUserId)
+                .setExpiration(new Date(System.currentTimeMillis() + SecurityConstants.EXPIRATION_TIME))
+                .signWith(SignatureAlgorithm.HS512, SecurityConstants.getTokenSecret())
+                .compact();
+        return token;
+    }
 }
