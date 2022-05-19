@@ -2,6 +2,8 @@ package com.pp.app.ui.model.request.controller;
 
 import com.pp.app.service.AddressService;
 import com.pp.app.service.UserService;
+import com.pp.app.ui.model.request.PasswordResetModel;
+import com.pp.app.ui.model.request.PasswordResetRequestModel;
 import com.pp.app.ui.model.response.AddressRest;
 import com.pp.app.ui.model.response.OperationStatusModel;
 import com.pp.app.ui.model.response.UserRest;
@@ -162,6 +164,42 @@ public class UserController {
         } else {
             returnValue.setOperationResult(RequestOperationStatus.ERROR.name());
         }
+
+        return returnValue;
+    }
+
+    @PostMapping(path = "/password-reset-request",
+            consumes = {MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE},
+            produces = {MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    public OperationStatusModel requestReset(@RequestBody PasswordResetRequestModel passwordResetRequestModel){
+        OperationStatusModel returnValue = new OperationStatusModel();
+
+        boolean operationResult = userService.requestPasswordReset(passwordResetRequestModel.getEmail());
+
+        returnValue.setOperationName(RequestOperationName.REQUEST_PASSWORD_RESET.name());
+        returnValue.setOperationResult(RequestOperationStatus.ERROR.name());
+
+        if (operationResult)
+            returnValue.setOperationResult(RequestOperationStatus.SUCCESS.name());
+
+        return returnValue;
+    }
+
+    @PostMapping(path = "/password-reset",
+            consumes = {MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    public OperationStatusModel resetPassword(@RequestBody PasswordResetModel passwordResetModel){
+        OperationStatusModel returnValue = new OperationStatusModel();
+
+        boolean operationResult = userService.resetPassword(
+                passwordResetModel.getToken(),
+                passwordResetModel.getPassword());
+
+
+        returnValue.setOperationName(RequestOperationName.PASSWORD_RESET.name());
+        returnValue.setOperationResult(RequestOperationStatus.ERROR.name());
+
+        if (operationResult)
+            returnValue.setOperationResult(RequestOperationStatus.SUCCESS.name());
 
         return returnValue;
     }

@@ -1,7 +1,9 @@
 package com.pp.app.service.implementation;
 
 import com.pp.app.io.entity.AddressEntity;
+import com.pp.app.io.entity.PasswordResetTokenEntity;
 import com.pp.app.io.entity.UserEntity;
+import com.pp.app.io.repositories.PasswordResetTokenRepository;
 import com.pp.app.io.repositories.UserRepository;
 import com.pp.app.service.EmailService;
 import com.pp.app.service.UserService;
@@ -16,16 +18,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.print.attribute.standard.Destination;
+import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class  UserServiceImplementation implements UserService {
@@ -42,7 +44,11 @@ public class  UserServiceImplementation implements UserService {
     @Autowired
     EmailService emailService;
 
+    @Autowired
+    PasswordResetTokenRepository passwordResetTokenRepository;
+
     @Override
+    @Transactional(rollbackOn = Exception.class)
     public UserDto createUser(UserDto userDto) {
 
         userRepository.findByEmail(userDto.getEmail()).ifPresent( user -> {
@@ -163,6 +169,51 @@ public class  UserServiceImplementation implements UserService {
                 returnValue = true;
             }
         }
+
+        return returnValue;
+    }
+
+    @Override
+    public boolean requestPasswordReset(String email) {
+        boolean returnValue = false;
+        Optional<UserEntity> userEntity = userRepository.findByEmail(email);
+        if (userEntity.isEmpty())
+            return returnValue;
+
+        String token = utils.generatePasswordResetToken(userEntity.get().getUserId());
+        PasswordResetTokenEntity passwordResetTokenEntity = new PasswordResetTokenEntity();
+        passwordResetTokenEntity.setToken(token);
+        passwordResetTokenEntity.setUserEntity(userEntity.get());
+        passwordResetTokenRepository.save(passwordResetTokenEntity);
+
+        returnValue = emailService.sendPasswordResetEmail(userEntity.get().getFirstName(),
+                userEntity.get().getEmail(),
+                token);
+
+        return returnValue;
+    }
+
+    @Override
+    public boolean resetPassword(String token, String password) {
+        boolean returnValue = false;
+
+        if (Utils.hasTokenExpired(token))
+            return returnValue;
+
+        PasswordResetTokenEntity passwordResetTokenEntity = passwordResetTokenRepository.findByToken(token).orElseThrow( () ->{
+            throw new RuntimeException("No such a token");
+        });
+
+        String enncodedPassword = bCryptPasswordEncoder.encode(password);
+
+        UserEntity userEntity = passwordResetTokenEntity.getUserEntity();
+        userEntity.setEncryptedPassword(enncodedPassword);
+        UserEntity saveUserEntity = userRepository.save(userEntity);
+
+        if (saveUserEntity != null && saveUserEntity.getEncryptedPassword().equalsIgnoreCase(enncodedPassword))
+            returnValue = true;
+
+        passwordResetTokenRepository.delete(passwordResetTokenEntity);
 
         return returnValue;
     }

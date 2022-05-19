@@ -11,4 +11,9 @@ public class ViewController {
     public String verifyEmailTokenPage(Model model) {
         return "email-verification";
     }
+
+    @RequestMapping(path = "/password-reset")
+    public String passwordReset(Model model) {
+        return "password-reset";
+    }
 }
